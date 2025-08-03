@@ -191,16 +191,13 @@ class HasKeyLookup(PostgresOperatorLookup):
         for key in rhs:
             if isinstance(key, KeyTransform):
                 *_, rhs_key_transforms = key.preprocess_lhs(compiler, connection)
+                # Preserve array/index transforms for KeyTransform instances.
+                suffix = compile_json_path(rhs_key_transforms, include_root=False)
             else:
-                rhs_key_transforms = [key]
-            rhs_params.append(
-                "%s%s"
-                % (
-                    lhs_json_path,
-                    compile_json_path(rhs_key_transforms, include_root=False),
-                )
-            )
-        # Add condition for each key.
+                # Literal keys always treated as JSON object keys (even numeric strings).
+                suffix = ".%s" % json.dumps(str(key))
+            rhs_params.append("%s%s" % (lhs_json_path, suffix))
+        # Combine conditions for multiple keys if needed.
         if self.logical_operator:
             sql = "(%s)" % self.logical_operator.join([sql] * len(rhs_params))
         return sql, tuple(lhs_params) + tuple(rhs_params)

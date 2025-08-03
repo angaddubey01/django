@@ -517,6 +517,13 @@ class TestQuerying(TestCase):
             NullableJSONModel.objects.filter(value__has_key="j"),
             [self.objs[4]],
         )
+    def test_has_key_numeric_string(self):
+        # JSON object with a numeric string key should be recognized on all backends
+        obj = NullableJSONModel.objects.create(value={"1111": "bar"})
+        self.assertSequenceEqual(
+            NullableJSONModel.objects.filter(value__has_key="1111"),
+            [obj],
+        )
 
     def test_has_key_deep(self):
         tests = [
