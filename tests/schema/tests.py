@@ -28,8 +28,8 @@ from .fields import (
 from .models import (
     Author, AuthorCharFieldWithIndex, AuthorTextFieldWithIndex,
     AuthorWithDefaultHeight, AuthorWithEvenLongerName, AuthorWithIndexedName,
-    AuthorWithIndexedNameAndBirthday, AuthorWithUniqueName,
-    AuthorWithUniqueNameAndBirthday, Book, BookForeignObj, BookWeak,
+    AuthorWithIndexedNameAndBirthday, AuthorWithUniqueAndIndexedNameAndBirthday,
+    AuthorWithUniqueName, AuthorWithUniqueNameAndBirthday, Book, BookForeignObj, BookWeak,
     BookWithLongName, BookWithO2O, BookWithoutAuthor, BookWithSlug, IntegerPK,
     Node, Note, NoteRename, Tag, TagIndexed, TagM2MTest, TagUniqueRename,
     Thing, UniqueTest, new_apps,
@@ -49,9 +49,11 @@ class SchemaTests(TransactionTestCase):
 
     models = [
         Author, AuthorCharFieldWithIndex, AuthorTextFieldWithIndex,
-        AuthorWithDefaultHeight, AuthorWithEvenLongerName, Book, BookWeak,
-        BookWithLongName, BookWithO2O, BookWithSlug, IntegerPK, Node, Note,
-        Tag, TagIndexed, TagM2MTest, TagUniqueRename, Thing, UniqueTest,
+        AuthorWithDefaultHeight, AuthorWithEvenLongerName,
+        AuthorWithUniqueAndIndexedNameAndBirthday,
+        Book, BookWeak, BookWithLongName, BookWithO2O, BookWithSlug,
+        IntegerPK, Node, Note, Tag, TagIndexed, TagM2MTest, TagUniqueRename,
+        Thing, UniqueTest,
     ]
 
     # Utility functions
@@ -2244,6 +2246,41 @@ class SchemaTests(TransactionTestCase):
         with connection.schema_editor() as editor:
             AuthorWithIndexedNameAndBirthday._meta.indexes = []
             editor.remove_index(AuthorWithIndexedNameAndBirthday, index)
+
+    @skipUnlessDBFeature('allows_multiple_constraints_on_same_fields')
+    def test_remove_index_together_on_model_with_unique_together(self):
+        with connection.schema_editor() as editor:
+            editor.create_model(AuthorWithUniqueAndIndexedNameAndBirthday)
+        constraints = self.get_constraints(AuthorWithUniqueAndIndexedNameAndBirthday._meta.db_table)
+        self.assertEqual(
+            len([
+                details for details in constraints.values()
+                if details['columns'] == ['name', 'birthday'] and details['index']
+            ]),
+            2,
+        )
+        index_together = AuthorWithUniqueAndIndexedNameAndBirthday._meta.index_together
+        with connection.schema_editor() as editor:
+            editor.alter_index_together(
+                AuthorWithUniqueAndIndexedNameAndBirthday,
+                index_together,
+                [],
+            )
+        constraints = self.get_constraints(AuthorWithUniqueAndIndexedNameAndBirthday._meta.db_table)
+        self.assertEqual(
+            len([
+                details for details in constraints.values()
+                if details['columns'] == ['name', 'birthday'] and details['unique']
+            ]),
+            1,
+        )
+        self.assertEqual(
+            len([
+                details for details in constraints.values()
+                if details['columns'] == ['name', 'birthday'] and details['index']
+            ]),
+            1,
+        )
 
     @isolate_apps('schema')
     def test_db_table(self):

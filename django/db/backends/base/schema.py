@@ -400,6 +400,8 @@ class BaseDatabaseSchemaEditor:
             self.execute(self._create_index_sql(model, fields, suffix="_idx"))
 
     def _delete_composed_index(self, model, fields, constraint_kwargs, sql):
+        if constraint_kwargs.get('index') and 'unique' not in constraint_kwargs:
+            constraint_kwargs['unique'] = False
         meta_constraint_names = {constraint.name for constraint in model._meta.constraints}
         meta_index_names = {constraint.name for constraint in model._meta.indexes}
         columns = [model._meta.get_field(field).column for field in fields]

@@ -80,6 +80,16 @@ class AuthorWithUniqueNameAndBirthday(models.Model):
         unique_together = [['name', 'birthday']]
 
 
+class AuthorWithUniqueAndIndexedNameAndBirthday(models.Model):
+    name = models.CharField(max_length=255)
+    birthday = models.DateField()
+
+    class Meta:
+        apps = new_apps
+        unique_together = [['name', 'birthday']]
+        index_together = [['name', 'birthday']]
+
+
 class Book(models.Model):
     author = models.ForeignKey(Author, models.CASCADE)
     title = models.CharField(max_length=100, db_index=True)
