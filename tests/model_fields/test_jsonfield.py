@@ -576,6 +576,21 @@ class TestQuerying(TestCase):
             [self.objs[3], self.objs[4], self.objs[6]],
         )
 
+    def test_numeric_has_key_lookups(self):
+        obj = NullableJSONModel.objects.create(value={"1": "a", "2": "b"})
+        self.assertSequenceEqual(
+            NullableJSONModel.objects.filter(value__has_key="1"),
+            [obj],
+        )
+        self.assertSequenceEqual(
+            NullableJSONModel.objects.filter(value__has_keys=["1", "2"]),
+            [obj],
+        )
+        self.assertSequenceEqual(
+            NullableJSONModel.objects.filter(value__has_any_keys=["2", "3"]),
+            [obj],
+        )
+
     @skipUnlessDBFeature("supports_json_field_contains")
     def test_contains(self):
         tests = [

@@ -126,16 +126,20 @@ class JSONField(CheckFieldDefaultMixin, Field):
         )
 
 
-def compile_json_path(key_transforms, include_root=True):
+def compile_json_path(key_transforms, include_root=True, force_text=False):
     path = ["$"] if include_root else []
     for key_transform in key_transforms:
         try:
             num = int(key_transform)
-        except ValueError:  # non-integer
+        except ValueError:
             path.append(".")
             path.append(json.dumps(key_transform))
         else:
-            path.append("[%s]" % num)
+            if force_text:
+                path.append(".")
+                path.append(json.dumps(key_transform))
+            else:
+                path.append("[%s]" % num)
     return "".join(path)
 
 
@@ -191,13 +195,19 @@ class HasKeyLookup(PostgresOperatorLookup):
         for key in rhs:
             if isinstance(key, KeyTransform):
                 *_, rhs_key_transforms = key.preprocess_lhs(compiler, connection)
+                force_text = False
             else:
                 rhs_key_transforms = [key]
+                force_text = True
             rhs_params.append(
                 "%s%s"
                 % (
                     lhs_json_path,
-                    compile_json_path(rhs_key_transforms, include_root=False),
+                    compile_json_path(
+                        rhs_key_transforms,
+                        include_root=False,
+                        force_text=force_text,
+                    ),
                 )
             )
         # Add condition for each key.
