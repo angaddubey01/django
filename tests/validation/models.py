@@ -131,3 +131,19 @@ assert str(assertion_error) == (
     "Model validation.MultipleAutoFields can't have more than one "
     "auto-generated field."
 )
+
+
+class ArchivedArticleManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(archived=False)
+
+
+class ArchivedArticle(models.Model):
+    title = models.CharField(max_length=100)
+    archived = models.BooleanField(default=False)
+    all_objects = models.Manager()
+    objects = ArchivedArticleManager()
+
+
+class FavoriteArchivedArticle(models.Model):
+    article = models.ForeignKey(ArchivedArticle, models.CASCADE)
