@@ -2953,10 +2953,45 @@ class StrictAssignmentTests(SimpleTestCase):
         # when its own __init__() is called when creating form.instance.
         form.instance._should_error = True
         self.assertFalse(form.is_valid())
+
         self.assertEqual(form.errors, {
             '__all__': ['Cannot set attribute'],
             'title': ['This field cannot be blank.']
         })
+
+# ----------------------------------------------------------------------
+# ForeignKey.validate base manager validation tests
+# ----------------------------------------------------------------------
+class ForeignKeyValidateBaseManagerTests(TestCase):
+    def test_foreignkey_validate_uses_base_manager(self):
+        # A custom manager that filters out archived instances by default.
+        class ArticleManager(models.Manager):
+            def get_queryset(self):
+                return super().get_queryset().filter(archived=False)
+
+        class Article(models.Model):
+            title = models.CharField(max_length=100)
+            archived = models.BooleanField(default=False)
+            objects = ArticleManager()
+
+        class Favorite(models.Model):
+            article = models.ForeignKey(Article, on_delete=models.CASCADE)
+
+        class FavoriteForm(forms.ModelForm):
+            class Meta:
+                model = Favorite
+                fields = '__all__'
+
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                # Override queryset to include archived via base manager.
+                self.fields['article'].queryset = Article._base_manager.all()
+
+        # Create an archived article (excluded by default manager).
+        archived = Article._base_manager.create(title='archived', archived=True)
+        form = FavoriteForm(data={'article': archived.pk})
+        # Validation should pass using base manager, not default manager.
+        self.assertTrue(form.is_valid(), form.errors)
 
 
 class ModelToDictTests(TestCase):
