@@ -2166,6 +2166,48 @@ class SchemaTests(TransactionTestCase):
             False,
         )
 
+    def test_index_and_unique_together_on_same_fields(self):
+        """
+        Removing index_together when unique_together exists on the same fields
+        should remove only the non-unique index and preserve the unique constraint.
+        """
+        class UTIT(Model):
+            f1 = IntegerField()
+            f2 = IntegerField()
+
+            class Meta:
+                apps = new_apps
+                app_label = 'schema'
+                unique_together = (('f1', 'f2'),)
+                index_together = (('f1', 'f2'),)
+
+        self.local_models.append(UTIT)
+        # Create the table with both index and unique constraints
+        with connection.schema_editor() as editor:
+            editor.create_model(UTIT)
+
+        constraints = self.get_constraints(UTIT._meta.db_table)
+        # Confirm both unique and index exist initially
+        self.assertTrue(
+            any(c['unique'] and c['columns'] == ['f1', 'f2'] for c in constraints.values())
+        )
+        self.assertTrue(
+            any(c['index'] and not c['unique'] and c['columns'] == ['f1', 'f2'] for c in constraints.values())
+        )
+
+        # Remove index_together
+        with connection.schema_editor() as editor:
+            editor.alter_index_together(UTIT, [('f1', 'f2')], [])
+
+        constraints_after = self.get_constraints(UTIT._meta.db_table)
+        # After removal, unique constraint remains, index is removed
+        self.assertTrue(
+            any(c['unique'] and c['columns'] == ['f1', 'f2'] for c in constraints_after.values())
+        )
+        self.assertFalse(
+            any(c['index'] and not c['unique'] and c['columns'] == ['f1', 'f2'] for c in constraints_after.values())
+        )
+
     def test_index_together_with_fk(self):
         """
         Tests removing and adding index_together constraints that include
