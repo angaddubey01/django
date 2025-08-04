@@ -261,6 +261,19 @@ class ModelBackendTest(BaseModelBackendTest, TestCase):
         )
         self.assertEqual(authenticate(username='test', password='test'), user)
 
+    @override_settings(
+        PASSWORD_HASHERS=['auth_tests.test_auth_backends.CountingMD5PasswordHasher'],
+    )
+    def test_authenticate_missing_credentials_no_query_or_hash(self):
+        CountingMD5PasswordHasher.calls = 0
+        with self.assertNumQueries(0):
+            self.assertIsNone(authenticate(password='test'))
+        self.assertEqual(CountingMD5PasswordHasher.calls, 0)
+        CountingMD5PasswordHasher.calls = 0
+        with self.assertNumQueries(0):
+            self.assertIsNone(authenticate(username='test'))
+        self.assertEqual(CountingMD5PasswordHasher.calls, 0)
+
 
 @override_settings(AUTH_USER_MODEL='auth_tests.ExtensionUser')
 class ExtensionUserModelBackendTest(BaseModelBackendTest, TestCase):

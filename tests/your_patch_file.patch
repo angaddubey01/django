@@ -1,0 +1,147 @@
+(
+  cd "$(git rev-parse --show-toplevel)"
+  git apply --3way <<'EOF'
+diff --git a/django/contrib/auth/backends.py b/django/contrib/auth/backends.py
+index f4b1722757..a3765ae0f1 100644
+--- a/django/contrib/auth/backends.py
++++ b/django/contrib/auth/backends.py
+@@ -39,6 +39,8 @@ class ModelBackend(BaseBackend):
+     def authenticate(self, request, username=None, password=None, **kwargs):
+         if username is None:
+             username = kwargs.get(UserModel.USERNAME_FIELD)
++        if username is None or password is None:
++            return
+         try:
+             user = UserModel._default_manager.get_by_natural_key(username)
+         except UserModel.DoesNotExist:
+diff --git a/pre-commit-cache/.lock b/pre-commit-cache/.lock
+new file mode 100644
+index 0000000000..e69de29bb2
+diff --git a/pre-commit-cache/README b/pre-commit-cache/README
+new file mode 100644
+index 0000000000..1bef0b97ed
+--- /dev/null
++++ b/pre-commit-cache/README
+@@ -0,0 +1,2 @@
++This directory is maintained by the pre-commit project.
++Learn more: https://github.com/pre-commit/pre-commit
+diff --git a/pre-commit-cache/db.db b/pre-commit-cache/db.db
+new file mode 100644
+index 0000000000..03cbff5845
+Binary files /dev/null and b/pre-commit-cache/db.db differ
+diff --git a/pre-commit-cache/pre-commit.log b/pre-commit-cache/pre-commit.log
+new file mode 100644
+index 0000000000..943d22f7a1
+--- /dev/null
++++ b/pre-commit-cache/pre-commit.log
+@@ -0,0 +1,43 @@
++### version information
++
++```
++pre-commit version: 4.1.0
++git --version: git version 2.50.1
++sys.version:
++    3.12.9 (main, May 29 2025, 21:17:39) [GCC 13.3.0]
++sys.executable: /root/.pyenv/versions/3.12.9/bin/python
++os.name: posix
++sys.platform: linux
++```
++
++### error information
++
++```
++An error has occurred: InvalidConfigError: 
++=====> .pre-commit-config.yaml is not a file
++```
++
++```
++Traceback (most recent call last):
++  File "/root/.pyenv/versions/3.12.9/lib/python3.12/site-packages/pre_commit/error_handler.py", line 73, in error_handler
++    yield
++  File "/root/.pyenv/versions/3.12.9/lib/python3.12/site-packages/pre_commit/main.py", line 417, in main
++    return run(args.config, store, args)
++           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
++  File "/root/.pyenv/versions/3.12.9/lib/python3.12/site-packages/pre_commit/commands/run.py", line 422, in run
++    config = load_config(config_file)
++             ^^^^^^^^^^^^^^^^^^^^^^^^
++  File "/root/.pyenv/versions/3.12.9/lib/python3.12/site-packages/cfgv.py", line 399, in load_from_filename
++    with reraise_as(exc_tp):
++         ^^^^^^^^^^^^^^^^^^
++  File "/root/.pyenv/versions/3.12.9/lib/python3.12/contextlib.py", line 158, in __exit__
++    self.gen.throw(value)
++  File "/root/.pyenv/versions/3.12.9/lib/python3.12/site-packages/cfgv.py", line 45, in reraise_as
++    raise tp(e).with_traceback(tb) from None
++  File "/root/.pyenv/versions/3.12.9/lib/python3.12/site-packages/cfgv.py", line 42, in reraise_as
++    yield
++  File "/root/.pyenv/versions/3.12.9/lib/python3.12/site-packages/cfgv.py", line 401, in load_from_filename
++    raise ValidationError(f'{display_filename} is not a file')
++pre_commit.clientlib.InvalidConfigError: 
++=====> .pre-commit-config.yaml is not a file
++```
+diff --git a/test-output.log b/test-output.log
+new file mode 100644
+index 0000000000..6666c30e1a
+--- /dev/null
++++ b/test-output.log
+@@ -0,0 +1,35 @@
++Testing against Django installed in '/testbed/20250723/203354/django/django'
++Importing application auth_tests
++Skipping setup of unused database(s): other.
++Operations to perform:
++  Synchronize unmigrated apps: auth, auth_tests, contenttypes, messages, sessions, staticfiles
++  Apply all migrations: admin, sites
++Synchronizing apps without migrations:
++  Creating tables...
++    Creating table django_content_type
++    Creating table auth_permission
++    Creating table auth_group
++    Creating table auth_user
++    Creating table django_session
++    Creating table auth_tests_customuser
++    Creating table auth_tests_customuserwithoutisactivefield
++    Creating table auth_tests_extensionuser
++    Creating table auth_tests_custompermissionsuser
++    Creating table auth_tests_customusernonuniqueusername
++    Creating table auth_tests_isactivetestuser1
++    Creating table auth_tests_minimaluser
++    Creating table auth_tests_nopassworduser
++    Creating table auth_tests_concrete
++    Creating table auth_tests_uuiduser
++    Creating table auth_tests_email
++    Creating table auth_tests_customuserwithfk
++    Creating table auth_tests_integerusernameuser
++    Creating table auth_tests_userwithdisabledlastloginfield
++    Running deferred SQL...
++Running migrations:
++  Applying admin.0001_initial... OK
++  Applying admin.0002_logentry_remove_auto_add... OK
++  Applying admin.0003_logentry_add_action_flag_choices... OK
++  Applying sites.0001_initial... OK
++  Applying sites.0002_alter_domain_unique... OK
++System check identified no issues (0 silenced).
+diff --git a/tests/auth_tests/test_auth_backends.py b/tests/auth_tests/test_auth_backends.py
+index 6447edefc9..54e5fd54f3 100644
+--- a/tests/auth_tests/test_auth_backends.py
++++ b/tests/auth_tests/test_auth_backends.py
+@@ -261,6 +261,19 @@ class ModelBackendTest(BaseModelBackendTest, TestCase):
+         )
+         self.assertEqual(authenticate(username='test', password='test'), user)
+ 
++    @override_settings(
++        PASSWORD_HASHERS=['auth_tests.test_auth_backends.CountingMD5PasswordHasher'],
++    )
++    def test_authenticate_missing_credentials_no_query_or_hash(self):
++        CountingMD5PasswordHasher.calls = 0
++        with self.assertNumQueries(0):
++            self.assertIsNone(authenticate(password='test'))
++        self.assertEqual(CountingMD5PasswordHasher.calls, 0)
++        CountingMD5PasswordHasher.calls = 0
++        with self.assertNumQueries(0):
++            self.assertIsNone(authenticate(username='test'))
++        self.assertEqual(CountingMD5PasswordHasher.calls, 0)
++
+ 
+ @override_settings(AUTH_USER_MODEL='auth_tests.ExtensionUser')
+ class ExtensionUserModelBackendTest(BaseModelBackendTest, TestCase):
+EOF
+)
