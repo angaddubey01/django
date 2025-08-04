@@ -16,3 +16,9 @@ tests/coverage_html/
 tests/.coverage
 build/
 tests/report/
+
+adbugreport*
+adprompt*
+
+# Pre-commit cache
+pre-commit-cache/
