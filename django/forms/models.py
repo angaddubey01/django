@@ -636,7 +636,16 @@ def modelform_factory(
     class_name = model.__name__ + "Form"
 
     # Class attributes for the new form class.
-    form_class_attrs = {"Meta": Meta, "formfield_callback": formfield_callback}
+    form_class_attrs = {"Meta": Meta}
+    
+    # Priority for formfield_callback:
+    # 1. Explicitly provided to modelform_factory
+    # 2. Class attribute on the form
+    # 3. Meta attribute on the form
+    if formfield_callback:
+        form_class_attrs["formfield_callback"] = formfield_callback
+    elif hasattr(form, 'formfield_callback'):
+        form_class_attrs["formfield_callback"] = form.formfield_callback
 
     if getattr(Meta, "fields", None) is None and getattr(Meta, "exclude", None) is None:
         raise ImproperlyConfigured(
