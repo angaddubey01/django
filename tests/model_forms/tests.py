@@ -3465,6 +3465,24 @@ class FormFieldCallbackTests(SimpleTestCase):
             callback_args, [(id_field, {}), (name_field, {"widget": widget})]
         )
 
+    def test_modelform_factory_uses_parent_formfield_callback(self):
+        callback_args = []
+
+        def callback(db_field, **kwargs):
+            callback_args.append((db_field, kwargs))
+            return db_field.formfield(**kwargs)
+
+        class BaseForm(forms.ModelForm):
+            class Meta:
+                model = Person
+                fields = "__all__"
+                formfield_callback = callback
+
+        modelform_factory(Person, form=BaseForm)
+        id_field, name_field = Person._meta.fields
+
+        self.assertEqual(callback_args, [(id_field, {}), (name_field, {})])
+
     def test_bad_callback(self):
         # A bad callback provided by user still gives an error
         with self.assertRaises(TypeError):
