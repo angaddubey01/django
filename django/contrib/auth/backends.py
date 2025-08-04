@@ -39,6 +39,9 @@ class ModelBackend(BaseBackend):
     def authenticate(self, request, username=None, password=None, **kwargs):
         if username is None:
             username = kwargs.get(UserModel.USERNAME_FIELD)
+        # Short-circuit if username or password is None to avoid unnecessary queries and password hashing.
+        if username is None or password is None:
+            return None
         try:
             user = UserModel._default_manager.get_by_natural_key(username)
         except UserModel.DoesNotExist:

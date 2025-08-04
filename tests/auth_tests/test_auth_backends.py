@@ -226,6 +226,16 @@ class BaseModelBackendTest:
         authenticate(username='no_such_user', password='test')
         self.assertEqual(CountingMD5PasswordHasher.calls, 1)
 
+    def test_authenticate_no_query_when_username_or_password_none(self):
+        """Authenticate shouldn't hit the database when username or password is None."""
+        username = getattr(self.user, self.UserModel.USERNAME_FIELD)
+        # No query when username is None
+        with self.assertNumQueries(0):
+            self.assertIsNone(authenticate(username=None, password='test'))
+        # No query when password is None
+        with self.assertNumQueries(0):
+            self.assertIsNone(authenticate(username=username, password=None))
+
 
 class ModelBackendTest(BaseModelBackendTest, TestCase):
     """
